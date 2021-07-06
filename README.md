@@ -9,3 +9,8 @@
  - このエラーはおそらく[BWF](https://ja.wikipedia.org/wiki/Broadcast_Wave_Format)フォーマットが原因
    - BWFフォーマットに記録された時間情報と実際のデータの長さのズレによる（多分）
    - このツールによりBWFのメタデータは失われる
+
+## [wcut.py](wcut.py)
+
+- wavファイルを切り出すツール
+- オプション引数で切り出し方を指定できる
