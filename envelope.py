@@ -10,7 +10,7 @@ import numpy as np
 import argparse
 import decimal
 
-parser = argparse.ArgumentParser(description='Tool for extracting from wav files. [arg4] can be specified as an optional argument and the option can be omitted.')
+parser = argparse.ArgumentParser(description='Tool for easily cutting out wav files using envelopes obtained from Hilbert transforms.')
 
 parser.add_argument('arg1', help='[inputfile]')
 parser.add_argument('arg2', help='[outputfile]', nargs='?',default=None)
