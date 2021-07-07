@@ -35,12 +35,9 @@ if input_wav_splitext != '.wav' and input_wav_splitext != '.WAV':
 # 位置引数が足りない場合，時間だけ表示する
 if args.arg2 == None or args.arg3 == None:
     with wave.open(input_wav_name) as wav:
-        nchannels = wav.getnchannels()
         framerate = wav.getframerate()
         nframes = wav.getnframes()
-        framerate_nchannels = framerate * nchannels
-        len_data = nframes * nchannels
-    print('Playback time : '+str(len_data/framerate_nchannels)+' sec')
+    print('Playback time : '+str(nframes/framerate)+' sec')
     sys.exit()
 
 # オプション引数の数・省略されているかを確認
@@ -68,7 +65,7 @@ dest_wav_dirname = os.path.dirname(dest_wav_name)
 if os.path.exists(dest_wav_dirname) == False:
     os.makedirs(dest_wav_dirname)
 
-#分離した音声ファイルをwaveモジュールで読み込む
+# waveモジュールで読み込む
 with wave.open(input_wav_name) as wav:
     samplewidth = wav.getsampwidth()
     nchannels = wav.getnchannels()
@@ -100,7 +97,7 @@ elif which_opt == 2: # dulation
     time_2 = time_1 + round(framerate_nchannels * float(arg4) )
 
 decimal.getcontext().prec = 3
-print('Playback time : '+str(len_data/framerate_nchannels)+' sec -> '+str((time_2 - time_1)/framerate_nchannels)+' sec : '+str(+decimal.Decimal((time_2 - time_1)/len_data*100))+'%')
+print('Playback time : '+str(nframes/framerate)+' sec -> '+str((time_2 - time_1)/framerate_nchannels)+' sec : '+str(+decimal.Decimal((time_2 - time_1)/len_data*100))+'%')
 
 # 加工した音声データを書き出す
 with wave.open(dest_wav_name, 'w') as wav:
