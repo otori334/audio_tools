@@ -9,7 +9,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Script to make wav mono.')
 parser.add_argument('arg1', help='[inputfile]')
 parser.add_argument('arg2', help='[outputfile]')
-parser.add_argument('-c', '--ch', type=int, default=0, choices=range(1,10), help='[select channel]')
+parser.add_argument('-c', '--ch', type=int, default=1, choices=range(1,10), help='[select channel]')
 args = parser.parse_args()
 input = os.path.abspath(args.arg1)
 output = os.path.abspath(args.arg2)
