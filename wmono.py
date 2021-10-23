@@ -31,9 +31,8 @@ with wave.open(input) as wav:
     nframes = wav.getnframes()
     if nchannels == 1:
         print("wmono.py: Target is already mono.")
-        sys.exit()
     whichchannel = (args.ch - 1) % (nchannels)
-    print(f'Channel {whichchannel + 1} has been selected.')
+    print(f'wmono.py: Channel {whichchannel + 1} has been selected from {nchannels} channels.')
     if samplewidth == 2:
         data = np.frombuffer(wav.readframes(nframes), dtype='int16')[whichchannel::nchannels].copy()
         #data = np.frombuffer(wav.readframes(nframes), dtype='int16').copy().reshape([nchannels, nframes], order='F').mean(axis=0, dtype = "int16") #移動する人間の声ではうなりが発生する．位置推定に使えそう．
