@@ -32,11 +32,10 @@ if os.path.isfile(input) == False:
 input_splitext = os.path.splitext(input)[1]
 if input_splitext in ['.wav', '.WAV']:
     processing = input
-    print("aaaaa")
 elif input_splitext in ['.mov', '.MOV', '.mp4', '.MP4', '.webm', '.WEBM']:
     fp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.wav', delete=True)
     processing = fp.name
-    print("Separating audio files from video...")
+    print("Separating audio file from video...")
     command = "ffmpeg -y -i '"+input+"' -loglevel quiet -vn '"+processing+"'"
     sb.call(command, shell=True)
 else:
@@ -83,11 +82,13 @@ if processing != input:
 
 T = round(nframes/framerate) + 1 #sec
 t=np.array(range(T))#デシベル変換とグラフに用いる時間の配列
-extended_t=np.array(range(T+2*W))
+extended_T = T + W * 2
+extended_t = np.array(range(extended_T))
 dest = np.empty(nchannels * nframes)#配列 data と分けないと音質が劣化する
 mag = np.empty(nchannels * nframes)
-tmp_db = np.empty(T)
+tmp_db = np.empty(extended_T)
 bias_db = np.empty(nchannels * T)
+stft_duration = W//2 + W%2
 
 if W > T:
     print(f"wlev.py: The wav file is too short. The duration of the wav file must be longer than {W} seconds.")
@@ -104,10 +105,10 @@ for whichchannel in range(nchannels):
     extended_db = to_db(extended_data, N, extended_t)
     #stftで直流バイアスを得る
     f, stft_t, stft_data = sp.stft(extended_db, fs = 1, window = "hann", nperseg = W)
-    tmp_db = np.repeat(np.real(stft_data[0,2:-2]), stft_t[1] - stft_t[0])[:T]
-    bias_db[whichchannel::nchannels] = smoothing(tmp_db, W)
+    tmp_db = np.repeat(np.real(stft_data[0,:]), stft_duration)
+    bias_db[whichchannel::nchannels] = smoothing(tmp_db, W)[stft_duration * 2:stft_duration * 2 + T]
+    mag[whichchannel::nchannels] = np.repeat(np.power(10, (target_db - bias_db[whichchannel::nchannels])/20 ), framerate)[:nframes]
 
-mag = np.repeat(np.power(10, (target_db - bias_db)/20 ), framerate)[:nframes * nchannels]
 dest = data * mag#data と dest 分けないとここで劣化
 
 # マキシマイズと型変換
