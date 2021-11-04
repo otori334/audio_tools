@@ -13,11 +13,15 @@ import argparse
 parser = argparse.ArgumentParser(description='Script to automatically adjust the volume of wav.')
 parser.add_argument('arg1', help='[inputfile]')
 parser.add_argument('arg2', help='[outputfile]')
-parser.add_argument('-d', '--db', type=int, default=50, choices=range(30,71), help='[target db]')
-args = parser.parse_args()#wav は 90db まで表現できる
+parser.add_argument('-d', '--db', type=int, default=50, choices=range(30,71), help='[target db]')#https://achapi2718.blogspot.com/2011/12/dbbit.html
+parser.add_argument('-w', '--window', type=int, default=64, help='[Width of the window function]')
+parser.add_argument('-n', '--n', type=int, default=1024, help='[samplesize of to_db]')
+args = parser.parse_args()
 input = os.path.abspath(args.arg1)
 output = os.path.abspath(args.arg2)
 target_db = args.db
+W = args.window# 小さくすると無音からの立ち上がりへの応答が速くなるが，音量の強弱を失っていく
+N = args.n#to_db のサンプルサイズ # 調整する意味はあまりないと思う
 
 # 入力の絶対パスを解析
 if os.path.isfile(input) == False:
@@ -26,6 +30,9 @@ if os.path.isfile(input) == False:
 input_splitext = os.path.splitext(input)[1]
 if input_splitext != '.wav' and input_splitext != '.WAV':
     print("The extension of the first argument must be \'.wav\' or \'.WAV\'.")
+    sys.exit()
+if os.path.isfile(output) == True:
+    print("Output file already exists.")
     sys.exit()
 
 #https://tips-memo.com/python-db
@@ -56,23 +63,38 @@ with wave.open(input) as wav:
         wav_type = np.int32
     else:
         # https://qiita.com/Dsuke-K/items/2ad4945a81644db1e9ff
-        print("Sample width : ", samplewidth)
+        print("wlev.py: Sample width is ", samplewidth)
         sys.exit()
     data = np.frombuffer(wav.readframes(nframes), dtype=wav_type).copy()
 
 T = round(nframes/framerate) + 1 #sec
 t=np.array(range(T))#デシベル変換とグラフに用いる時間の配列
+extended_t=np.array(range(T+2*W))
 dest = np.empty(nchannels * nframes)#配列 data と分けないと音質が劣化する
+mag = np.empty(nchannels * nframes)
+tmp_db = np.empty(T)
+bias_db = np.empty(nchannels * T)
+
+if W > T:
+    print(f"wlev.py: The wav file is too short. The duration of the wav file must be longer than {W} seconds.")
+    sys.exit()
+
+if N > framerate:
+    N = framerate
+    print(f"wlev.py: Too-large samplesize of to_db \'{N}\' are limited to frameratesize \'{framerate}\'.")
 
 for whichchannel in range(nchannels):
+    #端をケア
+    extended_data = np.concatenate([-data[whichchannel:W*framerate*nchannels+whichchannel:nchannels][::-1], data[whichchannel::nchannels], -data[-W*framerate*nchannels+whichchannel::nchannels][::-1]])
     #デシベル変換
-    db = to_db(data[whichchannel::nchannels], 1024, t)
+    extended_db = to_db(extended_data, N, extended_t)
     #stftで直流バイアスを得る
-    f, stft_t, stft_data = sp.stft(db, fs = 1, window = "hann", nperseg = 256)
-    db = np.repeat(np.real(stft_data[0,:]), stft_t[1] - stft_t[0])[:T]
-    db = smoothing(db, 256)
-    mag = np.repeat(np.power(10, (target_db - db)/20), framerate)[:nframes]
-    dest[whichchannel::nchannels] = data[whichchannel::nchannels] * mag#data と dest 分けないとここで劣化
+    f, stft_t, stft_data = sp.stft(extended_db, fs = 1, window = "hann", nperseg = W)
+    tmp_db = np.repeat(np.real(stft_data[0,2:-2]), stft_t[1] - stft_t[0])[:T]
+    bias_db[whichchannel::nchannels] = smoothing(tmp_db, W)
+
+mag = np.repeat(np.power(10, (target_db - bias_db)/20 ), framerate)[:nframes * nchannels]
+dest = data * mag#data と dest 分けないとここで劣化
 
 # マキシマイズと型変換
 dest[dest > np.iinfo(wav_type).max] = np.iinfo(wav_type).max
@@ -87,14 +109,12 @@ with wave.open(output, 'w') as wav:
     wav.writeframes(dest)
 
 """
-db1 = smoothing(db, 60);db1 = smoothing(db1, 30)
-db2 = to_db(data, 1024, t);db2 = smoothing(db2, 60);db2 = smoothing(db2, 30)
-db3 = np.ones(T)*50
 e_time = time.time() - s_time; print(f'{e_time}秒かかりました！') # 実行時間 = 終了時間 - 開始時間
-plt.xlabel("Time [sec]");plt.ylabel("db")
-plt.plot(t,db)
-plt.plot(t,db3,'y')
-plt.plot(t,db1,'b')
-plt.plot(t,db2,'r')
-plt.show()
+for whichchannel in range(nchannels):
+    line = np.ones(T)*target_db;plt.plot(t,line,'y')
+    db_ori = to_db(data[whichchannel::nchannels], N, t);db_ori = smoothing(db_ori, 60);db_ori = smoothing(db_ori, 30);plt.plot(t,db_ori,'b')
+    plt.plot(t,bias_db[whichchannel::nchannels])
+    db3 = to_db(dest[whichchannel::nchannels], N, t);db3 = smoothing(db3, 60);db3 = smoothing(db3, 30);plt.plot(t,db3,'r')
+    plt.xlabel("Time [sec]");plt.ylabel("db")
+    plt.show()
 """
