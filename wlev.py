@@ -1,7 +1,9 @@
 # wav の音量を自動で調節する
 import os
 import sys
+import subprocess as sb
 import wave as wave
+import tempfile
 import numpy as np
 import scipy.signal as sp
 import argparse
@@ -28,8 +30,17 @@ if os.path.isfile(input) == False:
     print("The first argument should be an existing file.")
     sys.exit()
 input_splitext = os.path.splitext(input)[1]
-if input_splitext != '.wav' and input_splitext != '.WAV':
-    print("The extension of the first argument must be \'.wav\' or \'.WAV\'.")
+if input_splitext in ['.wav', '.WAV']:
+    processing = input
+    print("aaaaa")
+elif input_splitext in ['.mov', '.MOV', '.mp4', '.MP4', '.webm', '.WEBM']:
+    fp = tempfile.NamedTemporaryFile(mode='w+b', suffix='.wav', delete=True)
+    processing = fp.name
+    print("Separating audio files from video...")
+    command = "ffmpeg -y -i '"+input+"' -loglevel quiet -vn '"+processing+"'"
+    sb.call(command, shell=True)
+else:
+    print("The extension of the first argument must be one of \'.wav\', \'.WAV\', \'.mp4\', \'.MP4\', \'.webm\', \'.WEBM\', \'.mov\' or \'.MOV\'.")
     sys.exit()
 if os.path.isfile(output) == True:
     print("Output file already exists.")
@@ -52,7 +63,7 @@ def smoothing(array, a):
     return x
 
 # 分離した音声ファイルをwaveモジュールで読み込む
-with wave.open(input) as wav:
+with wave.open(processing) as wav:
     samplewidth = wav.getsampwidth()
     nchannels = wav.getnchannels()
     framerate = wav.getframerate()
@@ -66,6 +77,9 @@ with wave.open(input) as wav:
         print("wlev.py: Sample width is ", samplewidth)
         sys.exit()
     data = np.frombuffer(wav.readframes(nframes), dtype=wav_type).copy()
+
+if processing != input:
+    fp.close()
 
 T = round(nframes/framerate) + 1 #sec
 t=np.array(range(T))#デシベル変換とグラフに用いる時間の配列
