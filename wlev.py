@@ -30,6 +30,7 @@ parser.add_argument('-w', '--window', type=int, default=64, help='[Width of the 
 parser.add_argument('-n', '--n', type=int, default=1024, help='[samplesize of to_db]')
 parser.add_argument('-p', '--plot', action='store_true')
 parser.add_argument('-c', '--comp', action='store_true')
+parser.add_argument('-l', '--limit', action='store_true')
 args = parser.parse_args()
 input_file = os.path.abspath(args.arg1)
 output_file = os.path.abspath(args.arg2)
@@ -89,6 +90,14 @@ def comp(dest_db, th, ratio, target_db, data_db, bias_db):
     dest_db[bool_list] = (data_db[bool_list] - th) * (1/ratio - 1) - bias_db[bool_list]/ratio + target_db
     return dest_db
 
+def limit(dest_db, th, target_db, data_db):
+    if th > 0:
+        bool_list = data_db > target_db + th
+    else:
+        bool_list = target_db + th > data_db
+    dest_db[bool_list] = dest_db[bool_list] + (target_db + th) - data_db[bool_list]
+    return dest_db
+
 # 分離した音声ファイルをwaveモジュールで読み込む
 with wave.open(processing_file) as wav:
     samplewidth = wav.getsampwidth()
@@ -113,6 +122,7 @@ t=np.array(range(T))#デシベル変換とグラフに用いる時間の配列
 extended_T = T + W * 2
 extended_t = np.array(range(extended_T))
 data_db = np.empty(nchannels * T)
+smooth_db = np.empty(nchannels * T)
 bias_db = np.empty(nchannels * T)
 tmp_db = np.empty(extended_T)
 mag = np.empty(nchannels * nframes)
@@ -133,17 +143,24 @@ for whichchannel in range(nchannels):
     #デシベル変換
     extended_db = to_db(extended_data, N, extended_t, target_db)
     data_db[whichchannel::nchannels] = extended_db[W:W + T]
+    smooth_db[whichchannel::nchannels] = smoothing(smoothing(extended_db, 60), 30)[W:W + T]
     #stftで直流バイアスを得る
     f, stft_t, stft_data = sp.stft(extended_db, fs = 1, window = "hann", nperseg = W)
     tmp_db = np.repeat(np.real(stft_data[0,:]), stft_duration)[:extended_T]
     bias_db[whichchannel::nchannels] = smoothing(tmp_db, W)[stft_duration * 2:stft_duration * 2 + T]
 
 tmp_db = target_db - bias_db
+#near_dest_db = smooth_db + tmp_db
 
 #コンプレッサー 
 if args.comp == True:
-    tmp_db = comp(tmp_db, 10, 5, target_db, data_db, bias_db)
-    tmp_db = comp(tmp_db, -10, 5, target_db, data_db, bias_db)
+    tmp_db = comp(tmp_db, 5, 2, target_db, data_db, bias_db)
+    tmp_db = comp(tmp_db, -5, 2, target_db, data_db, bias_db)
+
+#リミッター 
+if args.limit == True:
+    tmp_db = limit(tmp_db, 5, target_db, smooth_db + tmp_db)
+    tmp_db = limit(tmp_db, -5, target_db, smooth_db + tmp_db)
 
 for whichchannel in range(nchannels):
     if args.comp == True:
@@ -174,7 +191,7 @@ if args.plot == True:
         plt.plot(t[:-1],(target_db - bias_db)[whichchannel::nchannels][:-1],'g',label="tmp_db")
         dest_db = to_db(dest[whichchannel::nchannels], N, t, target_db);dest_db = smoothing(dest_db, 60);dest_db = smoothing(dest_db, 30);plt.plot(t[:-1],dest_db[:-1],'r',label="dest_db")
         #plt.plot(t[:-1],data_db[whichchannel:-nchannels+whichchannel:nchannels],'b',label="data_db")
-        data_db2 = smoothing(data_db[whichchannel::nchannels], 60);data_db2 = smoothing(data_db2, 30);plt.plot(t[:-1],data_db2[:-1],'b',label="data_db")
+        plt.plot(t[:-1],smooth_db[whichchannel::nchannels][:-1],'b',label="smooth_db")
         plt.plot(t[:-1],bias_db[whichchannel::nchannels][:-1],label="bias_db")
         plt.axhline(y=target_db,xmin=0,xmax=T-1,color='y',linestyle='dashed',label="target_db")
         plt.legend()
