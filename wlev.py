@@ -25,7 +25,7 @@ def yes_no_input():
 parser = argparse.ArgumentParser(description='Script to automatically adjust the volume of wav.')
 parser.add_argument('arg1', help='[inputfile]')
 parser.add_argument('arg2', help='[outputfile]')
-parser.add_argument('-d', '--db', type=int, default=50, choices=range(30,71), help='[target db]')#https://achapi2718.blogspot.com/2011/12/dbbit.html
+parser.add_argument('-d', '--db', type=int, default=60, choices=range(30,71), help='[target db]')#https://achapi2718.blogspot.com/2011/12/dbbit.html
 parser.add_argument('-w', '--window', type=int, default=64, help='[Width of the window function]')
 parser.add_argument('-n', '--n', type=int, default=1024, help='[samplesize of to_db]')
 parser.add_argument('-p', '--plot', action='store_true')
@@ -154,13 +154,12 @@ tmp_db = target_db - bias_db
 
 #コンプレッサー 
 if args.comp == True:
-    tmp_db = comp(tmp_db, 5, 2, target_db, data_db, bias_db)
-    tmp_db = comp(tmp_db, -5, 2, target_db, data_db, bias_db)
+    #tmp_db = comp(tmp_db, 6, 2, target_db, data_db, bias_db)
+    tmp_db = comp(tmp_db, 6, 2, target_db, smooth_db, bias_db)#滑らか
 
 #リミッター 
 if args.limit == True:
-    tmp_db = limit(tmp_db, 5, target_db, smooth_db + tmp_db)
-    tmp_db = limit(tmp_db, -5, target_db, smooth_db + tmp_db)
+    tmp_db = limit(tmp_db, 6, target_db, smooth_db + tmp_db)
 
 for whichchannel in range(nchannels):
     if args.comp == True:
