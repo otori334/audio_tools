@@ -3,6 +3,10 @@
 
 ## [wlev.py](wlev.py)
 
+- より優れたツールを見つけたので今はそれを使っている
+  - [ffmpeg-normalize](https://github.com/slhck/ffmpeg-normalize) は音圧ではなくラウドネスを用いる
+  - [適当に Dynamic Audio Normalizer と組み合わせたやつ](wlev.sh)
+  - [参考](http://ayageman.blogspot.com/2018/02/mp3-volume.html)
 - wavの音量を自動で調節するスクリプト
   - 多チャンネル wav 対応
   - プロットを表示するには `-p` か `--plot`
