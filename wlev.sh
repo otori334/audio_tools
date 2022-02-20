@@ -1,4 +1,6 @@
 #!/bin/zsh
+# http://ayageman.blogspot.com/2018/02/mp3-volume.html
+# https://nico-lab.net/normalize_audio_with_ffmpeg/
 
 IFS=$'\n'
 readonly CMD_NAME="${0##*/}"
@@ -10,10 +12,11 @@ if [ $# -ne 2 ]; then
     exit
 fi
     
-wav_path="$1"
+src_path="$1"
 dest_path="$2"
+tmp_path="${TMP_DIR}/a.wav"
 
-if [ -d "${wav_path}" ]; then
+if [ -d "${src_path}" ]; then
     echo "${CMD_NAME}: Input is file only." 1>&2
     exit
 fi
@@ -23,16 +26,14 @@ if [ "${dest_path##*.}" != "wav" ]; then
     exit
 fi
 
-if [ "${wav_path##*.}" = "mov" ]; then
-    wav_path="${TMP_DIR}/a.wav"
-    ffmpeg -i "$1" -vn "${wav_path}"
-    echo "Separated audio files from video." 1>&2
+if [ "${src_path##*.}" = "mov" -o "${src_path##*.}" = "mp4" ]; then
+    ffmpeg -i "${src_path}" -hide_banner -af dynaudnorm -vn "${tmp_path}"
+else
+    ffmpeg -i "${src_path}" -hide_banner -af dynaudnorm "${tmp_path}"
 fi
 
-ffmpeg-normalize "${wav_path}" -o "${wav_path}" -f -ar 48000 # マジックナンバー
-
-echo "Loudness normalisation completed." 1>&2
-
-ffmpeg -i "${wav_path}" -af dynaudnorm "${dest_path}"
-
+echo "Separated audio files from video." 1>&2
 echo "Dynamic Audio Normalizer completed." 1>&2
+echo "Loudness normalisation started." 1>&2
+ffmpeg-normalize "${tmp_path}" -o "${dest_path}" -f -ar 48000 # マジックナンバー
+echo "Loudness normalisation completed." 1>&2
