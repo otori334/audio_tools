@@ -5,6 +5,8 @@
 IFS=$'\n'
 readonly CMD_NAME="${0##*/}"
 readonly TMP_DIR="/tmp/${CMD_NAME%.*}_"$$
+readonly _ffmpeg='/usr/local/bin/ffmpeg'
+export FFMPEG_PATH="${FFMPEG_PATH:-${3:-${_ffmpeg}}}"
 trap 'rm -r "${TMP_DIR}" && exit' 0 1 2 3 15 && mkdir -p "${TMP_DIR}"
 
 if [ $# -ne 2 ]; then
@@ -27,13 +29,13 @@ if [ "${dest_path##*.}" != "wav" ]; then
 fi
 
 if [ "${src_path##*.}" = "mov" -o "${src_path##*.}" = "mp4" ]; then
-    ffmpeg -i "${src_path}" -hide_banner -af dynaudnorm -vn "${tmp_path}"
+    eval \"${FFMPEG_PATH}\" -i \"${src_path}\" -hide_banner -af dynaudnorm -vn \"${tmp_path}\"
 else
-    ffmpeg -i "${src_path}" -hide_banner -af dynaudnorm "${tmp_path}"
+    eval \"${FFMPEG_PATH}\" -i \"${src_path}\" -hide_banner -af dynaudnorm \"${tmp_path}\"
 fi
 
 echo "Separated audio files from video." 1>&2
 echo "Dynamic Audio Normalizer completed." 1>&2
 echo "Loudness normalisation started." 1>&2
-ffmpeg-normalize "${tmp_path}" -o "${dest_path}" -f -ar 48000 # マジックナンバー
+/Users/otori334/gitwork/audio_tools/.venv/bin/ffmpeg-normalize "${tmp_path}" -o "${dest_path}" -f -ar 48000 # マジックナンバー
 echo "Loudness normalisation completed." 1>&2
