@@ -48,11 +48,14 @@ if [ "${dest_path##*.}" != "wav" ]; then
     exit
 fi
 
+_oldpwd=`pwd`
+cd "${src_path%/*}"
 if [ "${src_path##*.}" = "mov" -o "${src_path##*.}" = "mp4" ]; then
     eval \"${FFMPEG_PATH}\" -i \"${src_path#/mnt/c}\" -loglevel error -hide_banner -stats -af dynaudnorm -vn \"${tmp_path#/mnt/c}\"
 else
     eval \"${FFMPEG_PATH}\" -i \"${src_path#/mnt/c}\" -loglevel error -hide_banner -stats -af dynaudnorm \"${tmp_path#/mnt/c}\"
 fi
+cd "${_oldpwd}"
 
 echo "Separated audio files from video." 1>&2
 echo "Dynamic Audio Normalizer completed." 1>&2
